@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!--
+    Fix #7 (A05 – CSP): CSS and JS are now in separate files.
+    This allows a strict server-side CSP with no unsafe-inline:
+      Content-Security-Policy: default-src 'none'; script-src 'self';
+        style-src 'self'; base-uri 'none'; form-action 'none';
+    See _headers (Netlify/Cloudflare) or nginx.conf for deployment config.
+  -->
+  <link rel="stylesheet" href="calculator.css" />
+  <title>Basic Calculator</title>
+</head>
+<body>
+
+  <div class="calculator" role="main" aria-label="Basic Calculator">
+    <div class="display" aria-live="polite" aria-atomic="true">
+      <div class="display__expression" id="expression" aria-label="Expression"></div>
+      <div class="display__current"    id="current"    aria-label="Current value">0</div>
+    </div>
+
+    <div class="btn-grid" role="group" aria-label="Calculator buttons">
+      <button class="btn btn--clear"    id="btn-clear"     aria-label="Clear"               data-action="clear">C</button>
+      <button class="btn btn--clear"    id="btn-backspace" aria-label="Backspace"            data-action="backspace">&#8592;</button>
+      <button class="btn btn--operator" aria-label="Percent (unavailable)"                   data-action="noop" disabled>%</button>
+      <button class="btn btn--operator" aria-label="Divide"    data-action="operator" data-value="/">&divide;</button>
+
+      <button class="btn btn--digit" aria-label="7" data-action="digit" data-value="7">7</button>
+      <button class="btn btn--digit" aria-label="8" data-action="digit" data-value="8">8</button>
+      <button class="btn btn--digit" aria-label="9" data-action="digit" data-value="9">9</button>
+      <button class="btn btn--operator" aria-label="Multiply" data-action="operator" data-value="*">&times;</button>
+
+      <button class="btn btn--digit" aria-label="4" data-action="digit" data-value="4">4</button>
+      <button class="btn btn--digit" aria-label="5" data-action="digit" data-value="5">5</button>
+      <button class="btn btn--digit" aria-label="6" data-action="digit" data-value="6">6</button>
+      <button class="btn btn--operator" aria-label="Subtract" data-action="operator" data-value="-">&minus;</button>
+
+      <button class="btn btn--digit" aria-label="1" data-action="digit" data-value="1">1</button>
+      <button class="btn btn--digit" aria-label="2" data-action="digit" data-value="2">2</button>
+      <button class="btn btn--digit" aria-label="3" data-action="digit" data-value="3">3</button>
+      <button class="btn btn--operator" aria-label="Add" data-action="operator" data-value="+">+</button>
+
+      <button class="btn btn--digit btn--zero" aria-label="0" data-action="digit" data-value="0">0</button>
+      <button class="btn btn--decimal" aria-label="Decimal point" data-action="decimal">.</button>
+      <button class="btn btn--equals"  aria-label="Equals"       data-action="equals">=</button>
+    </div>
+  </div>
+
+  <p class="brand">Basic Calculator &nbsp;|&nbsp; No dependencies</p>
+
+  <script src="calculator.js"></script>
+</body>
+</html>
