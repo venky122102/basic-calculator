@@ -1,0 +1,8 @@
+# Netlify / Cloudflare Pages deployment headers
+# This strict CSP is possible because CSS and JS are in separate files
+# (no unsafe-inline required)
+/*
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; base-uri 'none'; form-action 'none';
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
