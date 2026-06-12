@@ -3,79 +3,373 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!--
+    Fix #1 (A05 – CSP): tightened default-src from 'self' to 'none';
+    added base-uri 'none' and form-action 'none' to block base-tag
+    injection and form hijacking. unsafe-inline retained for single-file
+    architecture; see issue #7 for the file-split approach that eliminates it.
+  -->
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline';" />
+        content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none';" />
   <title>Basic Calculator</title>
+
   <style>
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    :root{--midnight:#161916;--fl01:#444744;--fl02:#6D706B;--fl03:#ADB1AC;--white:#FFFFFF;--cream:#FFF2DF;--gold:#FFAD28;--coral:#FF555F;--btn-radius:10px;--gap:10px}
-    body{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background-color:var(--midnight);font-family:'Segoe UI',Calibri,Arial,sans-serif;padding:16px}
-    .calculator{width:100%;max-width:360px;background:var(--fl01);border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;user-select:none}
-    .display{background:var(--midnight);padding:20px 20px 12px;text-align:right;min-height:110px;display:flex;flex-direction:column;justify-content:flex-end}
-    .display__expression{font-size:.85rem;color:var(--fl03);min-height:22px;word-break:break-all;margin-bottom:6px;letter-spacing:.5px}
-    .display__current{font-size:2.8rem;font-weight:700;color:var(--white);word-break:break-all;line-height:1;transition:font-size .1s ease}
-    .display__current.shrink{font-size:1.9rem}.display__current.error{color:var(--coral);font-size:1.6rem}
-    .btn-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--gap);padding:var(--gap)}
-    .btn{border:none;border-radius:var(--btn-radius);font-size:1.3rem;font-weight:600;cursor:pointer;padding:18px 10px;transition:background .15s ease,transform .1s ease,box-shadow .1s ease;outline:none;position:relative}
-    .btn:focus-visible{box-shadow:0 0 0 3px var(--gold)}.btn:active{transform:scale(.93)}
-    .btn--digit{background:var(--fl01);color:var(--white)}.btn--digit:hover{background:#555855}
-    .btn--zero{grid-column:span 2}
-    .btn--operator{background:var(--fl02);color:var(--white)}.btn--operator:hover{background:#858885}.btn--operator.active{background:var(--gold);color:var(--midnight)}
-    .btn--clear{background:var(--coral);color:var(--white)}.btn--clear:hover{background:#ff7f87}
-    .btn--equals{background:var(--gold);color:var(--midnight)}.btn--equals:hover{background:#ffc048}
-    .btn--decimal{background:var(--fl01);color:var(--white)}.btn--decimal:hover{background:#555855}
-    .brand{margin-top:18px;font-size:.72rem;color:var(--fl02);letter-spacing:1px;text-transform:uppercase}
-    @media(max-width:400px){.calculator{max-width:100%}.btn{padding:15px 8px;font-size:1.15rem}.display__current{font-size:2.2rem}.display__current.shrink{font-size:1.6rem}}
-    @media(min-width:600px){.calculator{max-width:380px}.btn{padding:20px 10px}}
+    /* Fix #6 (A04): all hex colours standardised to 6-digit lowercase */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --midnight:   #161916;
+      --fl01:       #444744;
+      --fl02:       #6d706b;
+      --fl03:       #adb1ac;
+      --white:      #ffffff;
+      --cream:      #fff2df;
+      --gold:       #ffad28;
+      --coral:      #ff555f;
+      --btn-radius: 10px;
+      --gap:        10px;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background-color: var(--midnight);
+      font-family: 'Segoe UI', Calibri, Arial, sans-serif;
+      padding: 16px;
+    }
+
+    .calculator {
+      width: 100%;
+      max-width: 360px;
+      background: var(--fl01);
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+      overflow: hidden;
+      user-select: none;
+    }
+
+    .display {
+      background: var(--midnight);
+      padding: 20px 20px 12px;
+      text-align: right;
+      min-height: 110px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+
+    .display__expression {
+      font-size: 0.85rem;
+      color: var(--fl03);
+      min-height: 22px;
+      word-break: break-all;
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .display__current {
+      font-size: 2.8rem;
+      font-weight: 700;
+      color: var(--white);
+      word-break: break-all;
+      line-height: 1;
+      transition: font-size 0.1s ease;
+    }
+
+    .display__current.shrink { font-size: 1.9rem; }
+    .display__current.error  { color: var(--coral); font-size: 1.6rem; }
+
+    .btn-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--gap);
+      padding: var(--gap);
+    }
+
+    .btn {
+      border: none;
+      border-radius: var(--btn-radius);
+      font-size: 1.3rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 18px 10px;
+      transition: background 0.15s ease, transform 0.1s ease, box-shadow 0.1s ease;
+      /* Fix #5 (A05): removed outline:none — :focus-visible handles the focus ring */
+      position: relative;
+    }
+
+    /* Fix #5 (A05): use outline (not box-shadow) — respected by Windows High Contrast */
+    .btn:focus-visible {
+      outline: 3px solid var(--gold);
+      outline-offset: 2px;
+    }
+
+    .btn:active { transform: scale(0.93); }
+
+    /* Fix #4 (A04): added .flash CSS rule so flashButton() has visual effect */
+    .btn.flash {
+      transform: scale(0.93);
+      background-color: var(--gold) !important;
+      color: var(--midnight) !important;
+      transition: none;
+    }
+
+    .btn--digit { background: var(--fl01); color: var(--white); }
+    .btn--digit:hover { background: #555855; }
+    .btn--zero  { grid-column: span 2; }
+
+    .btn--operator { background: var(--fl02); color: var(--white); }
+    .btn--operator:hover  { background: #858885; }
+    .btn--operator.active { background: var(--gold); color: var(--midnight); }
+
+    /* Fix #2 (A05): disabled % button styled to show it is unavailable */
+    .btn--operator:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn--operator:disabled:hover { background: var(--fl02); }
+
+    .btn--clear   { background: var(--coral); color: var(--white); }
+    .btn--clear:hover { background: #ff7f87; }
+    .btn--equals  { background: var(--gold);  color: var(--midnight); }
+    .btn--equals:hover { background: #ffc048; }
+    .btn--decimal { background: var(--fl01);  color: var(--white); }
+    .btn--decimal:hover { background: #555855; }
+
+    .brand {
+      margin-top: 18px;
+      font-size: 0.72rem;
+      color: var(--fl02);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    @media (max-width: 400px) {
+      .calculator { max-width: 100%; }
+      .btn { padding: 15px 8px; font-size: 1.15rem; }
+      .display__current { font-size: 2.2rem; }
+      .display__current.shrink { font-size: 1.6rem; }
+    }
+    @media (min-width: 600px) {
+      .calculator { max-width: 380px; }
+      .btn { padding: 20px 10px; }
+    }
   </style>
 </head>
 <body>
+
   <div class="calculator" role="main" aria-label="Basic Calculator">
     <div class="display" aria-live="polite" aria-atomic="true">
       <div class="display__expression" id="expression" aria-label="Expression"></div>
-      <div class="display__current" id="current" aria-label="Current value">0</div>
+      <div class="display__current"    id="current"    aria-label="Current value">0</div>
     </div>
+
     <div class="btn-grid" role="group" aria-label="Calculator buttons">
-      <button class="btn btn--clear" id="btn-clear" aria-label="Clear" data-action="clear">C</button>
-      <button class="btn btn--clear" id="btn-backspace" aria-label="Backspace" data-action="backspace">&#8592;</button>
-      <button class="btn btn--operator" aria-label="Percent (not implemented)" data-action="noop">%</button>
-      <button class="btn btn--operator" aria-label="Divide" data-action="operator" data-value="/">&divide;</button>
+      <button class="btn btn--clear"    id="btn-clear"     aria-label="Clear"     data-action="clear">C</button>
+      <button class="btn btn--clear"    id="btn-backspace" aria-label="Backspace" data-action="backspace">&#8592;</button>
+      <!-- Fix #2 (A05): button disabled; aria-label no longer exposes impl status -->
+      <button class="btn btn--operator" aria-label="Percent (unavailable)" data-action="noop" disabled>%</button>
+      <button class="btn btn--operator" aria-label="Divide"    data-action="operator" data-value="/">&divide;</button>
+
       <button class="btn btn--digit" aria-label="7" data-action="digit" data-value="7">7</button>
       <button class="btn btn--digit" aria-label="8" data-action="digit" data-value="8">8</button>
       <button class="btn btn--digit" aria-label="9" data-action="digit" data-value="9">9</button>
       <button class="btn btn--operator" aria-label="Multiply" data-action="operator" data-value="*">&times;</button>
+
       <button class="btn btn--digit" aria-label="4" data-action="digit" data-value="4">4</button>
       <button class="btn btn--digit" aria-label="5" data-action="digit" data-value="5">5</button>
       <button class="btn btn--digit" aria-label="6" data-action="digit" data-value="6">6</button>
       <button class="btn btn--operator" aria-label="Subtract" data-action="operator" data-value="-">&minus;</button>
+
       <button class="btn btn--digit" aria-label="1" data-action="digit" data-value="1">1</button>
       <button class="btn btn--digit" aria-label="2" data-action="digit" data-value="2">2</button>
       <button class="btn btn--digit" aria-label="3" data-action="digit" data-value="3">3</button>
-      <button class="btn btn--operator" aria-label="Add" data-action="operator" data-value="+">+</button>
+      <button class="btn btn--operator" aria-label="Add"      data-action="operator" data-value="+">+</button>
+
       <button class="btn btn--digit btn--zero" aria-label="0" data-action="digit" data-value="0">0</button>
       <button class="btn btn--decimal" aria-label="Decimal point" data-action="decimal">.</button>
-      <button class="btn btn--equals" aria-label="Equals" data-action="equals">=</button>
+      <button class="btn btn--equals"  aria-label="Equals"       data-action="equals">=</button>
     </div>
   </div>
+
   <p class="brand">Basic Calculator &nbsp;|&nbsp; No dependencies</p>
+
   <script>
     'use strict';
-    let currentOperand='0',previousOperand='',operator=null,shouldReset=false;
-    const displayCurrent=document.getElementById('current'),displayExpression=document.getElementById('expression');
-    function calculate(p,c,o){switch(o){case'+':return p+c;case'-':return p-c;case'*':return p*c;case'/':if(c===0)return NaN;return p/c;default:return c;}}
-    function formatNumber(n){if(!isFinite(n)||isNaN(n))return'Error';const a=Math.abs(n);if(a!==0&&(a>=1e10||a<1e-7))return n.toExponential(4);return parseFloat(n.toPrecision(10)).toString();}
-    function updateDisplay(v,e){displayCurrent.textContent=v;displayCurrent.classList.toggle('error',!!e);displayCurrent.classList.toggle('shrink',v.length>10);}
-    function updateExpression(){if(operator&&previousOperand!==''){const s={'+':'+','-':'−','*':'×','/':'÷'}[operator]||operator;displayExpression.textContent=`${previousOperand} ${s}`;}else displayExpression.textContent='';}
-    function highlightOperator(o){document.querySelectorAll('.btn--operator').forEach(b=>b.classList.toggle('active',b.dataset.value===o));}
-    function handleDigit(d){if(shouldReset){currentOperand='';shouldReset=false;}if(currentOperand==='0'&&d!=='.'){currentOperand=d;}else{if(currentOperand.length>=15)return;currentOperand+=d;}updateDisplay(currentOperand);updateExpression();}
-    function handleDecimal(){if(shouldReset){currentOperand='0';shouldReset=false;}if(currentOperand.includes('.'))return;if(currentOperand==='')currentOperand='0';currentOperand+='.';updateDisplay(currentOperand);}
-    function handleOperator(o){if(currentOperand===''&&previousOperand==='')return;if(operator!==null&&currentOperand!==''&&!shouldReset)handleEquals(false);if(displayCurrent.classList.contains('error'))return;if(currentOperand!=='')previousOperand=currentOperand;operator=o;shouldReset=true;highlightOperator(o);updateExpression();}
-    function handleEquals(f=true){if(operator===null||previousOperand==='')return;const rs=(currentOperand!==''&&!shouldReset)?currentOperand:previousOperand;const p=parseFloat(previousOperand),c=parseFloat(rs);if(isNaN(p)||isNaN(c)){updateDisplay('Error',true);resetState();return;}if(operator==='/'&&c===0){updateDisplay('Error',true);displayExpression.textContent=`${previousOperand} ÷ 0 =`;resetState();return;}const r=calculate(p,c,operator);if(!isFinite(r)){updateDisplay('Error',true);resetState();return;}const fm=formatNumber(r);const s={'+':'+','-':'−','*':'×','/':'÷'}[operator]||operator;displayExpression.textContent=`${previousOperand} ${s} ${rs} =`;updateDisplay(fm);currentOperand=fm;previousOperand=fm;if(f){operator=null;shouldReset=true;highlightOperator(null);}}
-    function handleClear(){resetState();updateDisplay('0');displayExpression.textContent='';}
-    function handleBackspace(){if(shouldReset||displayCurrent.classList.contains('error')){handleClear();return;}if(currentOperand.length<=1){currentOperand='0';}else{currentOperand=currentOperand.slice(0,-1);}updateDisplay(currentOperand);}
-    function resetState(){currentOperand='';previousOperand='';operator=null;shouldReset=false;highlightOperator(null);}
-    document.querySelector('.btn-grid').addEventListener('click',function(e){const b=e.target.closest('.btn');if(!b)return;const a=b.dataset.action,v=b.dataset.value;switch(a){case'digit':handleDigit(v);break;case'operator':handleOperator(v);break;case'equals':handleEquals(true);break;case'decimal':handleDecimal();break;case'clear':handleClear();break;case'backspace':handleBackspace();break;}});
-    document.addEventListener('keydown',function(e){const k=e.key;if(/^[0-9]$/.test(k)){e.preventDefault();handleDigit(k);return;}if(['+','-','*','/'].includes(k)){e.preventDefault();handleOperator(k);return;}if(k==='.'||k===','){e.preventDefault();handleDecimal();return;}if(k==='Enter'||k==='='){e.preventDefault();handleEquals(true);return;}if(k==='Backspace'){e.preventDefault();handleBackspace();return;}if(k==='Escape'||k==='Delete'){e.preventDefault();handleClear();}});
+
+    // Fix #6 (A04): named constants replace magic numbers
+    const MAX_OPERAND_LENGTH = 15;  // max digits to prevent display overflow
+    const FLASH_DURATION_MS  = 120; // keyboard button flash animation duration
+
+    // Fix #6 (A04): single OP_SYMBOLS lookup — was duplicated in two functions
+    const OP_SYMBOLS = { '+': '+', '-': '\u2212', '*': '\u00d7', '/': '\u00f7' };
+
+    // Fix #3 (A04): all state + methods encapsulated in Calculator class
+    // (previously: 4 global let variables + 8 global functions)
+    class Calculator {
+      constructor(displayCurrentEl, displayExpressionEl, operatorBtns) {
+        this.displayCurrent    = displayCurrentEl;
+        this.displayExpression = displayExpressionEl;
+        this.operatorButtons   = operatorBtns; // cached NodeList — no re-query on each press
+        this.currentOperand    = '0';
+        this.previousOperand   = '';
+        this.operator          = null;
+        this.shouldReset       = false;
+      }
+
+      // Safe arithmetic engine — no eval(), no Function()
+      calculate(prev, curr, op) {
+        switch (op) {
+          case '+': return prev + curr;
+          case '-': return prev - curr;
+          case '*': return prev * curr;
+          case '/':
+            if (curr === 0) return NaN;
+            return prev / curr;
+          default: return curr;
+        }
+      }
+
+      formatNumber(num) {
+        if (!isFinite(num) || isNaN(num)) return 'Error';
+        const abs = Math.abs(num);
+        if (abs !== 0 && (abs >= 1e10 || abs < 1e-7)) return num.toExponential(4);
+        return parseFloat(num.toPrecision(10)).toString();
+      }
+
+      updateDisplay(value, isError) {
+        this.displayCurrent.textContent = value;
+        this.displayCurrent.classList.toggle('error',  !!isError);
+        this.displayCurrent.classList.toggle('shrink', value.length > 10);
+      }
+
+      updateExpression() {
+        if (this.operator && this.previousOperand !== '') {
+          const sym = OP_SYMBOLS[this.operator] || this.operator;
+          this.displayExpression.textContent = `${this.previousOperand} ${sym}`;
+        } else {
+          this.displayExpression.textContent = '';
+        }
+      }
+
+      highlightOperator(op) {
+        this.operatorButtons.forEach(btn =>
+          btn.classList.toggle('active', btn.dataset.value === op)
+        );
+      }
+
+      evaluateExpression(finalise) {
+        if (this.operator === null || this.previousOperand === '') return false;
+        const rightStr = (this.currentOperand !== '' && !this.shouldReset)
+          ? this.currentOperand : this.previousOperand;
+        const prev = parseFloat(this.previousOperand);
+        const curr = parseFloat(rightStr);
+        if (isNaN(prev) || isNaN(curr)) { this.updateDisplay('Error', true); this.resetState(); return false; }
+        if (this.operator === '/' && curr === 0) {
+          this.updateDisplay('Error', true);
+          this.displayExpression.textContent = `${this.previousOperand} ${OP_SYMBOLS['/']} 0 =`;
+          this.resetState(); return false;
+        }
+        const result = this.calculate(prev, curr, this.operator);
+        if (!isFinite(result)) { this.updateDisplay('Error', true); this.resetState(); return false; }
+        const formatted = this.formatNumber(result);
+        const sym = OP_SYMBOLS[this.operator] || this.operator;
+        this.displayExpression.textContent = `${this.previousOperand} ${sym} ${rightStr} =`;
+        this.updateDisplay(formatted);
+        this.currentOperand = formatted;
+        this.previousOperand = formatted;
+        if (finalise) { this.operator = null; this.shouldReset = true; this.highlightOperator(null); }
+        return true;
+      }
+
+      handleDigit(digit) {
+        if (this.shouldReset) { this.currentOperand = ''; this.shouldReset = false; }
+        if (this.currentOperand === '0' && digit !== '.') {
+          this.currentOperand = digit;
+        } else {
+          if (this.currentOperand.length >= MAX_OPERAND_LENGTH) return;
+          this.currentOperand += digit;
+        }
+        this.updateDisplay(this.currentOperand);
+        this.updateExpression();
+      }
+
+      handleDecimal() {
+        if (this.shouldReset) { this.currentOperand = '0'; this.shouldReset = false; }
+        if (this.currentOperand.includes('.')) return;
+        if (this.currentOperand === '') this.currentOperand = '0';
+        this.currentOperand += '.';
+        this.updateDisplay(this.currentOperand);
+      }
+
+      handleOperator(op) {
+        if (this.currentOperand === '' && this.previousOperand === '') return;
+        if (this.operator !== null && this.currentOperand !== '' && !this.shouldReset) {
+          this.evaluateExpression(false);
+        }
+        if (this.displayCurrent.classList.contains('error')) return;
+        if (this.currentOperand !== '') this.previousOperand = this.currentOperand;
+        this.operator    = op;
+        this.shouldReset = true;
+        this.highlightOperator(op);
+        this.updateExpression();
+      }
+
+      handleEquals()   { this.evaluateExpression(true); }
+
+      handleClear()    { this.resetState(); this.updateDisplay('0'); this.displayExpression.textContent = ''; }
+
+      handleBackspace() {
+        if (this.shouldReset || this.displayCurrent.classList.contains('error')) { this.handleClear(); return; }
+        this.currentOperand = this.currentOperand.length <= 1 ? '0' : this.currentOperand.slice(0, -1);
+        this.updateDisplay(this.currentOperand);
+      }
+
+      resetState() {
+        this.currentOperand = ''; this.previousOperand = '';
+        this.operator = null; this.shouldReset = false;
+        this.highlightOperator(null);
+      }
+    }
+
+    const calc = new Calculator(
+      document.getElementById('current'),
+      document.getElementById('expression'),
+      document.querySelectorAll('.btn--operator')
+    );
+
+    document.querySelector('.btn-grid').addEventListener('click', function (e) {
+      const btn = e.target.closest('.btn');
+      if (!btn || btn.disabled) return;
+      const { action, value } = btn.dataset;
+      switch (action) {
+        case 'digit':     calc.handleDigit(value);    break;
+        case 'operator':  calc.handleOperator(value); break;
+        case 'equals':    calc.handleEquals();        break;
+        case 'decimal':   calc.handleDecimal();       break;
+        case 'clear':     calc.handleClear();         break;
+        case 'backspace': calc.handleBackspace();     break;
+      }
+    });
+
+    document.addEventListener('keydown', function (e) {
+      const k = e.key;
+      if (/^[0-9]$/.test(k))                { e.preventDefault(); calc.handleDigit(k);    flashButton(`[data-value="${k}"][data-action="digit"]`);    return; }
+      if (['+','-','*','/'].includes(k))     { e.preventDefault(); calc.handleOperator(k); flashButton(`[data-value="${k}"][data-action="operator"]`); return; }
+      if (k === '.' || k === ',')            { e.preventDefault(); calc.handleDecimal();   flashButton('[data-action="decimal"]');                        return; }
+      if (k === 'Enter' || k === '=')        { e.preventDefault(); calc.handleEquals();    flashButton('[data-action="equals"]');                         return; }
+      if (k === 'Backspace')                 { e.preventDefault(); calc.handleBackspace(); flashButton('[data-action="backspace"]');                      return; }
+      if (k === 'Escape' || k === 'Delete')  { e.preventDefault(); calc.handleClear();     flashButton('[data-action="clear"]');                          return; }
+    });
+
+    // Fix #4 (A04): .flash CSS rule now exists — this function has visual effect
+    // Fix #6 (A04): uses named constant FLASH_DURATION_MS instead of magic 120
+    function flashButton(selector) {
+      const btn = document.querySelector(selector);
+      if (!btn) return;
+      btn.classList.add('flash');
+      setTimeout(() => btn.classList.remove('flash'), FLASH_DURATION_MS);
+    }
   </script>
 </body>
 </html>
